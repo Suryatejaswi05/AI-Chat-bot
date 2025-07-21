@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional AI Chat Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        #chat-container::-webkit-scrollbar { width: 8px; }
+        #chat-container::-webkit-scrollbar-track { background: #f8fafc; }
+        #chat-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        #chat-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        html.dark #chat-container::-webkit-scrollbar-track { background: #1e293b; }
+        html.dark #chat-container::-webkit-scrollbar-thumb { background: #475569; }
+        html.dark #chat-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .chat-bubble-user { background-color: #2563eb; color: white; }
+        .chat-bubble-ai { background-color: #f1f5f9; color: #1e293b; }
+        html.dark .chat-bubble-ai { background-color: #334155; color: #f1f5f9; }
+
+        /* Styling for code blocks */
+        .prose pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            position: relative;
+            font-size: 0.875rem;
+        }
+        .prose .copy-code-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #475569;
+            color: #e2e8f0;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .prose pre:hover .copy-code-btn { opacity: 1; }
+    </style>
+    <script>
+        // Apply theme immediately to prevent flash of unstyled content
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        // Configure Tailwind to use the 'dark' class
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+</head>
+<body class="bg-slate-200 dark:bg-slate-900 flex items-center justify-center h-screen">
+    <div class="w-full max-w-3xl h-full md:h-[95vh] flex flex-col bg-white dark:bg-slate-800 shadow-2xl rounded-2xl">
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-t-2xl flex-shrink-0">
+            <div class="flex items-center space-x-3">
+                 <svg class="w-7 h-7 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM7.07 18.28c.43-.9 3.05-1.78 4.93-1.78s4.5.88 4.93 1.78C15.57 19.36 13.86 20 12 20s-3.57-.64-4.93-1.72zm11.26-2.83c-.8-1.92-3.27-3.45-6.33-3.45s-5.53 1.53-6.33 3.45C4.62 14.16 4 12.61 4 11c0-4.41 3.59-8 8-8s8 3.59 8 8c0 1.61-.62 3.16-1.67 4.45z"/><path d="M12 6c-1.94 0-3.5 1.56-3.5 3.5S10.06 13 12 13s3.5-1.56 3.5-3.5S13.94 6 12 6zm0 5c-.83 0-1.5-.67-1.5-1.5S11.17 8 12 8s1.5.67 1.5 1.5S12.83 11 12 11z"/></svg>
+                <h1 id="bot-name" contenteditable="true" class="text-xl font-bold rounded-md px-2 -mx-2 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors cursor-text">Manoj's AI Bot</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="theme-toggle-btn" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none rounded-lg text-sm p-2" title="Toggle Theme">
+                    <svg id="theme-icon-light" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707zM3 11a1 1 0 100-2H2a1 1 0 100 2h1zM6.464 16.364a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707z"></path></svg>
+                    <svg id="theme-icon-dark" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                </button>
+                <button id="clear-chat-btn" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none rounded-lg text-sm p-2" title="Clear Chat">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div id="chat-container" class="flex-1 p-6 overflow-y-auto space-y-6"></div>
+
+        <!-- Input Area -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 rounded-b-2xl flex-shrink-0">
+            <div class="flex items-center space-x-2">
+                <input type="text" id="user-input" placeholder="Ask me anything..." class="flex-1 p-3 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition w-full text-slate-800 dark:text-slate-200">
+                <button id="send-button" class="bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300 disabled:bg-blue-400 dark:disabled:bg-blue-800 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-up"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const clearChatButton = document.getElementById('clear-chat-btn');
+        const themeToggleButton = document.getElementById('theme-toggle-btn');
+        const themeIconLight = document.getElementById('theme-icon-light');
+        const themeIconDark = document.getElementById('theme-icon-dark');
+        const botNameElement = document.getElementById('bot-name');
+
+        let chatHistory = [];
+        
+        // --- Theme Management ---
+        const applyTheme = () => {
+            if (document.documentElement.classList.contains('dark')) {
+                themeIconLight.classList.remove('hidden');
+                themeIconDark.classList.add('hidden');
+            } else {
+                themeIconLight.classList.add('hidden');
+                themeIconDark.classList.remove('hidden');
+            }
+        };
+
+        themeToggleButton.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            applyTheme();
+        });
+
+        // --- Event Listeners ---
+        sendButton.addEventListener('click', handleSendMessage);
+        clearChatButton.addEventListener('click', clearChat);
+        userInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                handleSendMessage();
+            }
+        });
+        botNameElement.addEventListener('blur', () => {
+            const newName = botNameElement.textContent.trim();
+            if (newName) {
+                localStorage.setItem('botName', newName);
+            } else {
+                botNameElement.textContent = "Manoj's AI Bot";
+                localStorage.removeItem('botName');
+            }
+        });
+
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+            if (localStorage.getItem('botName')) {
+                botNameElement.textContent = localStorage.getItem('botName');
+            }
+            addWelcomeMessage();
+            userInput.focus();
+        });
+        
+        function addWelcomeMessage() {
+            const welcomeText = "Hello! I'm your professional AI assistant. I can help with research, content creation, and code. How may I assist you today?";
+            appendMessage(welcomeText, 'ai');
+            // Do not add welcome message to history, so it doesn't reappear on clear
+        }
+        
+        function clearChat() {
+            chatContainer.innerHTML = '';
+            chatHistory = [];
+            addWelcomeMessage();
+        }
+
+        async function handleSendMessage() {
+            const messageText = userInput.value.trim();
+            if (!messageText) return;
+
+            appendMessage(messageText, 'user');
+            chatHistory.push({ role: "user", parts: [{ text: messageText }] });
+
+            userInput.value = '';
+            setInteractionState(false);
+
+            showTypingIndicator();
+            try {
+                const aiResponse = await getAIResponse();
+                removeTypingIndicator();
+                
+                appendMessage(aiResponse, 'ai');
+                chatHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+
+            } catch (error) {
+                console.error("Error fetching AI response:", error);
+                removeTypingIndicator();
+                appendMessage("My apologies, but I've encountered an error. Please try again shortly.", 'ai', true);
+            } finally {
+                setInteractionState(true);
+            }
+        }
+
+        function appendMessage(text, sender, isError = false) {
+            const messageWrapper = document.createElement('div');
+            const messageContent = document.createElement('div');
+            const icon = document.createElement('div');
+            const bubble = document.createElement('div');
+            const timestamp = document.createElement('div');
+
+            messageWrapper.className = 'flex items-start gap-3';
+            icon.className = 'w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 mt-1';
+            
+            if (sender === 'user') {
+                messageWrapper.classList.add('justify-end');
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+                icon.className += ' bg-blue-600';
+                bubble.className = 'chat-bubble-user p-4 rounded-lg rounded-br-none shadow-md';
+                bubble.textContent = text;
+                messageContent.className = 'flex flex-col items-end';
+                messageContent.append(bubble, timestamp);
+                messageWrapper.append(messageContent, icon);
+            } else {
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect x="4" y="12" width="16" height="8"></rect><path d="M4 12v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+                icon.className += ' bg-slate-800 dark:bg-slate-600';
+                bubble.className = `prose prose-slate dark:prose-invert max-w-none p-4 rounded-lg rounded-tl-none shadow-md ${isError ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' : 'chat-bubble-ai'}`;
+                bubble.innerHTML = marked.parse(text);
+                messageContent.className = 'flex flex-col items-start';
+                messageContent.append(bubble, timestamp);
+                messageWrapper.append(icon, messageContent);
+            }
+            
+            timestamp.className = 'text-xs text-slate-400 dark:text-slate-500 mt-1';
+            timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            chatContainer.appendChild(messageWrapper);
+            addCopyButtonsToCodeBlocks();
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addCopyButtonsToCodeBlocks() {
+            chatContainer.querySelectorAll('pre').forEach(block => {
+                if (block.querySelector('.copy-code-btn')) return;
+                const btn = document.createElement('button');
+                btn.className = 'copy-code-btn';
+                btn.textContent = 'Copy';
+                btn.onclick = () => {
+                    const code = block.querySelector('code').innerText;
+                    navigator.clipboard.writeText(code).then(() => {
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                        btn.textContent = 'Error';
+                    });
+                };
+                block.appendChild(btn);
+            });
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'typing-indicator';
+            indicator.className = 'flex items-start gap-3';
+            indicator.innerHTML = `
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 mt-1 bg-slate-800 dark:bg-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect x="4" y="12" width="16" height="8"></rect><path d="M4 12v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </div>
+                <div class="chat-bubble-ai p-4 rounded-lg rounded-tl-none shadow-md">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" style="animation-delay: 0s;"></div>
+                        <div class="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                        <div class="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(indicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+        
+        function setInteractionState(enabled) {
+            userInput.disabled = !enabled;
+            sendButton.disabled = !enabled;
+            if(enabled) userInput.focus();
+        }
+
+        async function getAIResponse() {
+            const apiKey = "AIzaSyC5Jl6DdtcsFImL6a43aT0OlgLV99iVCAI"; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            
+            const payload = { contents: chatHistory };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const result = await response.json();
+
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    return result.candidates[0].content.parts[0].text;
+                } else {
+                    console.warn("Unexpected API response structure:", result);
+                    if (result.promptFeedback?.blockReason) {
+                         return `I am unable to respond to that due to: ${result.promptFeedback.blockReason}.`;
+                    }
+                    return "I received an empty response. Could you try rephrasing?";
+                }
+            } catch (error) {
+                console.error("Fetch failed:", error);
+                throw error;
+            }
+        }
+    </script>
+</body>
+</html>
